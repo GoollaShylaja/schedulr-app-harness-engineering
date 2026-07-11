@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "codebase-search": {
+      "command": "java",
+      "args": ["-jar", "tooling/mcp-codebase-search/target/codebase-search.jar"]
+    }
+  }
+}

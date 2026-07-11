@@ -1,0 +1,36 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|NotebookEdit|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "java \"$CLAUDE_PROJECT_DIR/.claude/hooks/SecurityGuard.java\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "java \"$CLAUDE_PROJECT_DIR/.claude/hooks/PostToolUseLint.java\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "java \"$CLAUDE_PROJECT_DIR/.claude/hooks/StopValidate.java\""
+          }
+        ]
+      }
+    ]
+  }
+}
