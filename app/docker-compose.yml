@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: schedulr
+      POSTGRES_USER: schedulr
+      POSTGRES_PASSWORD: schedulr
+    ports:
+      - "5435:5432"
+    volumes:
+      - schedulr-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U schedulr -d schedulr"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  schedulr-postgres-data:

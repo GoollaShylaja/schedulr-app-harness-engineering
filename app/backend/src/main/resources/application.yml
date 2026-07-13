@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: schedulr
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}
+
+cors:
+  origin: ${CORS_ORIGIN:http://localhost:3000}
+
+---
+# local-only fallback DB credentials and JWT secret — never used in other profiles
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5435/schedulr}
+    username: ${DATABASE_USERNAME:schedulr}
+    password: ${DATABASE_PASSWORD:schedulr}
+
+jwt:
+  secret: ${JWT_SECRET:dev-secret-change-me}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: seed
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!local"
+  datasource:
+    url: ${DATABASE_URL}

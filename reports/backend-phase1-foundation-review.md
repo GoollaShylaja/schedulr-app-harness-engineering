@@ -1,0 +1,17 @@
+## Code Review
+
+**Verdict:** PASS
+
+### Findings
+- [INFO] `app/backend/src/main/java/com/schedulr/meetings/controller/MeetingController.java:78` — `GET /api/v1/meetings/export` is declared before `GET /api/v1/meetings/{id}` (line 104), so no route-shadowing.
+- [INFO] Constructor injection confirmed throughout: no `@Autowired` field usages found anywhere under `app/backend/src/main/java/com/schedulr` (`grep -rn "@Autowired"` returned nothing); every `@Service`/`@RestController`/`@Component` reviewed (`MeetingController`, `AuthController`, `MeetingService`, `AuthService`, `SecurityConfig`, `JwtAuthenticationFilter`, `RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`, `CsvExportRenderer`, `PdfExportRenderer`, `ExportService`) uses `@RequiredArgsConstructor` with `private final` fields (or an explicit constructor with the same shape, e.g. `SecurityConfig`).
+- [INFO] `@Transactional` is applied at the service-method/class level only (`MeetingService`, `AuthService`); no controller carries `@Transactional`.
+- [INFO] CSV formula-injection escaping is centralized: `ExportService.csvSafe()` (`app/backend/src/main/java/com/schedulr/export/service/ExportService.java:21`) is the single implementation, and `CsvExportRenderer` (`app/backend/src/main/java/com/schedulr/export/service/CsvExportRenderer.java:33,54,56`) applies it to `title`, invitee `contactName`, and `contactEmail`. `MeetingController` never inlines escaping — it only calls `exportService.render(...)`.
+- [INFO] Single auth mechanism confirmed: `SecurityConfig` is stateless (`SessionCreationPolicy.STATELESS`), registers `JwtAuthenticationFilter` before `UsernamePasswordAuthenticationFilter`, and both `RestAuthenticationEntryPoint`/`RestAccessDeniedHandler` emit the same `ApiResponse.error(...)` envelope used by `GlobalExceptionHandler`. No second/legacy auth path found.
+- [INFO] DTO boundary respected: `UserResponse` excludes `hashedPassword`; `MeetingResponse`/`InviteeResponse` are built explicitly in `MeetingService.toResponse`/`toInviteeResponse` from entity fields, never returning JPA entities directly from any controller.
+- [INFO] Team-scoping confirmed on meetings queries: `MeetingSpecifications.teamId(...)` is always included in the `Specification.allOf(...)` chain in `MeetingService.list`, and single-record lookups go through `MeetingRepository.findByIdAndTeamId`.
+- [INFO] UUID PKs throughout (`Meeting`, `User`, `MeetingInvitee` all use `@Id private UUID id`, generated via `IdGenerator.newId()`); datetimes stored as `OffsetDateTime` with `columnDefinition = "timestamptz"`; rendering to viewer timezone happens only through `TimezoneConverter.render(...)` in `MeetingService.toResponse` — no raw `.toString()` on an `OffsetDateTime` sent to the frontend (the `.toString()` hits found via grep are on `UUID`/`StringBuilder`, not timestamps).
+- [INFO] Typed exception hierarchy is clean and centralized: all domain exceptions (`MeetingNotFoundException`, `InviteeNotFoundException`, `InvalidScheduleException`, `InvalidTimezoneException`, `InvalidCredentialsException`, `UnsupportedExportFormatException`) extend one of the base exceptions handled in `GlobalExceptionHandler`; no controller builds a `ResponseEntity` error body by hand.
+
+### Summary
+Phase 1 foundation is solid and follows CLAUDE.md conventions closely: constructor-only DI, service-level `@Transactional`, centralized CSV escaping, single JWT auth mechanism, UUID PKs, timezone-safe rendering, and no entity/password leakage. No blocking issues found.

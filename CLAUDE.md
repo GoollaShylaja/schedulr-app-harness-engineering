@@ -5,8 +5,7 @@ Schedulr is a B2B meeting-scheduling SaaS for sales teams. Stack: React 19 + Typ
 (backend, `app/backend/`). Postgres on host port 5435 (container 5432) via
 `app/docker-compose.yml`.
 
-This document is a **spec for Claude Code to build the app from**, ported from an
-equivalent Next.js/FastAPI project. There is no existing codebase yet — Claude Code
+This document is a **spec for Claude Code to build the app**. There is no existing codebase yet — Claude Code
 should treat every convention below as a rule to apply while generating the project,
 not as a description of code that already exists.
 
