@@ -23,7 +23,15 @@ class JwtServiceTest {
   void tamperedTokenIsRejected() {
     UUID userId = UUID.randomUUID();
     String token = jwtService.issue(userId);
-    String tampered = token.substring(0, token.length() - 1) + (token.endsWith("a") ? "b" : "a");
+    // Flip a character in the header segment (index 10), not the very last character of the
+    // signature: the trailing base64url group of an HS256 (32-byte) signature has unused low
+    // bits, so some single-character edits there decode to the same bytes and don't actually
+    // tamper the signature — making the assertion flaky. A header-segment edit always changes
+    // the signed content, so the signature always fails to verify.
+    char[] chars = token.toCharArray();
+    int index = 10;
+    chars[index] = chars[index] == 'a' ? 'b' : 'a';
+    String tampered = new String(chars);
 
     assertThatThrownBy(() -> jwtService.parseUserId(tampered))
         .isInstanceOf(UnauthenticatedException.class);
