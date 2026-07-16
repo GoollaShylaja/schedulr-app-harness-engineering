@@ -1,6 +1,8 @@
 spring:
   application:
     name: schedulr
+  profiles:
+    default: local
   jpa:
     hibernate:
       ddl-auto: validate
