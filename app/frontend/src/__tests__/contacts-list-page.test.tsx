@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContactsListPage } from "../pages/contacts/contacts-list-page";
 
@@ -42,7 +43,11 @@ describe("ContactsListPage", () => {
       timestamp: "",
     });
 
-    render(<ContactsListPage />);
+    render(
+      <MemoryRouter>
+        <ContactsListPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => expect(screen.getByText("Grace Hopper")).toBeInTheDocument());
     expect(screen.getByText("grace@example.com")).toBeInTheDocument();
@@ -52,7 +57,11 @@ describe("ContactsListPage", () => {
   it("surfaces an API error", async () => {
     mockFetchOnce(500, { success: false, message: "An unexpected error occurred", data: null, timestamp: "" });
 
-    render(<ContactsListPage />);
+    render(
+      <MemoryRouter>
+        <ContactsListPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() =>
       expect(screen.getByText("An unexpected error occurred")).toBeInTheDocument(),

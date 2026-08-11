@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/layout/protected-route";
 import { AuthProvider } from "./lib/auth-context";
 import { LoginPage } from "./pages/login/login-page";
 import { DashboardPage } from "./pages/dashboard/dashboard-page";
+import { SchedulePage } from "./pages/schedule/schedule-page";
 import { MeetingsListPage } from "./pages/meetings/meetings-list-page";
 import { MeetingDetailPage } from "./pages/meetings/meeting-detail-page";
 import { ContactsListPage } from "./pages/contacts/contacts-list-page";
@@ -19,6 +20,7 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/meetings" element={<MeetingsListPage />} />
             <Route path="/meetings/:id" element={<MeetingDetailPage />} />
             <Route path="/contacts" element={<ContactsListPage />} />

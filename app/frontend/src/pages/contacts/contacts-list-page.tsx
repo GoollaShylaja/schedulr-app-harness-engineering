@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Modal } from "../../components/ui/modal";
 import { Pagination } from "../../components/ui/pagination";
@@ -86,6 +87,9 @@ export function ContactsListPage() {
                   <span className="badge">{contact.stage}</span>
                 </td>
                 <td style={{ display: "flex", gap: "0.5rem" }}>
+                  <Link className="btn btn-secondary" to={`/schedule?contactId=${contact.id}`}>
+                    Schedule
+                  </Link>
                   <Button variant="secondary" onClick={() => setEditing(contact)}>
                     Edit
                   </Button>
