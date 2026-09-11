@@ -1,15 +1,9 @@
-# Schedulr (Java Edition) — Harness Engineering Project
+# Schedulr — Harness Engineering Project
 
 Schedulr is a B2B meeting-scheduling SaaS for sales teams. Stack: React 19 + TypeScript
 (frontend, `app/frontend/`) and Java 21 + Spring Boot 4 + Spring Data JPA + Flyway
 (backend, `app/backend/`). Postgres on host port 5435 (container 5432) via
 `app/docker-compose.yml`.
-
-This document is a **spec for Claude Code to build the app**. There is no existing codebase yet — Claude Code
-should treat every convention below as a rule to apply while generating the project,
-not as a description of code that already exists.
-
----
 
 ## Naming Conventions
 
@@ -27,36 +21,23 @@ not as a description of code that already exists.
 
 ## Core Code Patterns
 
-- **DTOs**: one file per resource under `app/backend/src/main/java/com/schedulr/<resource>/dto/`.
-  Use Java `record` types for `*CreateRequest`, `*UpdateRequest`, `*Response`. No mutable
-  DTO classes.
-- **JPA entities**: under `.../<resource>/entity/`. Use Jakarta Persistence annotations
-  (`jakarta.persistence.*`, Spring Boot 4 defaults to this namespace). Prefer Lombok
-  `@Getter`/`@Setter`/`@RequiredArgsConstructor` over hand-written boilerplate, but never
-  Lombok on entity `equals`/`hashCode` without care for JPA proxy pitfalls.
-- **Dependency injection**: constructor injection only. Never `@Autowired` on fields.
-  Use `@RequiredArgsConstructor` with `private final` fields on every `@Service`,
-  `@RestController`, and `@Component`.
-- **Structured errors**: a single `@RestControllerAdvice` (`GlobalExceptionHandler`)
-  translates service-layer exceptions into HTTP responses. Services throw typed
-  exceptions (e.g. `MeetingNotFoundException`, `InvalidScheduleException`) for
-  business-rule violations; controllers never construct `ResponseEntity` error bodies
-  by hand.
+- **DTOs**: one file per resource under `.../<resource>/dto/`, as `*CreateRequest`,
+  `*UpdateRequest`, `*Response` records. No mutable DTO classes.
+- **JPA entities**: under `.../<resource>/entity/`, Jakarta Persistence annotations.
+  Prefer Lombok `@Getter`/`@Setter`/`@RequiredArgsConstructor`, but never on entity
+  `equals`/`hashCode` without care for JPA proxy pitfalls.
+- **DI**: constructor injection only, `@RequiredArgsConstructor` + `private final`
+  fields on every `@Service`/`@RestController`/`@Component`. Never `@Autowired` fields.
+- **Errors**: a single `@RestControllerAdvice` (`GlobalExceptionHandler`) translates
+  typed service exceptions into HTTP responses; controllers never build error bodies.
 - **Transactions**: `@Transactional` at the service method level, not the controller.
-  Repositories are Spring Data JPA interfaces (`MeetingRepository extends
-  JpaRepository<Meeting, UUID>`), no manual session handling.
-- **Datetime storage**: always UTC, `OffsetDateTime` columns via
-  `@Column(columnDefinition = "timestamptz")`. Render to the viewer's timezone only at
-  the DTO-mapping boundary, via a dedicated `TimezoneConverter` component. Never call
-  `.toString()` on a raw UTC timestamp and send it straight to the frontend as
-  display text.
-- **CSV/export escaping**: any user-supplied string written to a CSV cell MUST be
-  prefixed with `'` if it starts with `=`, `+`, `-`, or `@`, to prevent formula
-  injection. Centralise this in `ExportService`; do not inline escaping logic in
-  controllers.
-- **IDs**: use UUID (v7 if the `com.fasterxml.uuid:java-uuid-generator` dependency is
-  available, v4 otherwise) as the externally exposed primary key. Never expose
-  sequential integer IDs in a URL or API response.
+- **Datetime**: always UTC, `OffsetDateTime` via `@Column(columnDefinition =
+  "timestamptz")`. Convert to viewer timezone only at the DTO boundary via
+  `TimezoneConverter` — never `.toString()` a raw UTC timestamp to the frontend.
+- **CSV escaping**: prefix values starting with `=`, `+`, `-`, `@` with `'` (formula
+  injection). Centralise in `ExportService`, never inline in controllers.
+- **IDs**: UUID (v7 preferred) as the externally exposed primary key, never sequential
+  integers in a URL or response.
 
 ---
 
@@ -72,85 +53,46 @@ not as a description of code that already exists.
 | Frontend unit tests | `npm run test` | `app/frontend` |
 | Frontend build | `npm run build` | `app/frontend` |
 
-Run the full gate before any PR. This is what a Stop hook (see below) should enforce
-automatically rather than relying on manual invocation.
+Run the full gate before any PR. A `Stop` hook enforces this automatically. Backend
+integration tests use Testcontainers — Docker must be running locally for `mvn test`
+to pass.
 
 ---
 
 ## On-Demand Context
 
-Load these modules only when the task touches the relevant area (mirrors the original
-progressive-disclosure structure):
+Load these modules only when the task touches the relevant area:
 
 | Module | Load when... |
 |---|---|
-| `.claude/context/architecture.md` | Adding a new resource, service, or REST controller — also covers REST API best practices (HTTP methods, URL naming, status codes, versioning, DTOs, validation, pagination, error handling) |
-| `.claude/context/auth.md` | Any authentication or authorization work — also covers REST API best practices for auth endpoints (login/register/refresh/logout) |
-| `.claude/context/export-pattern.md` | Any export feature (CSV, PDF, XLSX, etc.) — also covers REST API best practices for export endpoints |
-| `.claude/context/testing.md` | Writing or modifying tests — also covers testing the REST API contract (status codes, DTO leakage, validation, pagination, auth enforcement) |
-| `.claude/context/timezones.md` | Any datetime display, serialization, or storage — also covers REST API best practices for timezone-related endpoints |
+| `.claude/context/architecture.md` | Adding a new resource, service, or REST controller |
+| `.claude/context/auth.md` | Any authentication or authorization work |
+| `.claude/context/export-pattern.md` | Any export feature (CSV, PDF, XLSX, etc.) |
+| `.claude/context/testing.md` | Writing or modifying tests |
+| `.claude/context/timezones.md` | Any datetime display, serialization, or storage |
 | `.claude/context/codebase-search.md` | Using the MCP tools to navigate by symbol |
 
-These files don't exist yet either — Claude Code should create them as it builds out
-each area, following the same structure as the modules referenced above.
-
-Navigate by symbol using the `codebase-search` MCP server (`.mcp.json`) instead of
-`Grep`. The three tools — `find_references`, `where_is`, `outline` — parse the Java AST
-(via JavaParser) and return only real definitions and call sites, with no false hits
-from comments, javadoc, or string literals. Use them whenever you need to:
-
-- Confirm a method/class is defined where you expect it before reading it (`where_is`).
-- Verify a dependency is actually applied in new code, e.g. `find_references("getCurrentUser")`
-  to confirm a new controller method uses JWT auth, or see all callers before refactoring.
-- Check the public API of a service before adding a method (`outline`).
-
-See `.claude/context/codebase-search.md` for full tool descriptions. The server must be
-built once (`cd tooling/mcp-codebase-search && mvn package`) before it's usable — it isn't
-committed as a prebuilt jar.
+Navigate Java code by symbol using the `codebase-search` MCP server (`.mcp.json`)
+instead of `Grep` — it parses the AST via JavaParser (`find_references`, `where_is`,
+`outline`) and returns only real definitions and call sites. Build it once with
+`cd tooling/mcp-codebase-search && mvn package` if the jar is missing.
 
 ---
 
 ## Hard Rules
 
 - Run the full validation gate before opening a PR.
-- Never commit secrets, `.env` files, or JWT signing keys to version control. A
-  `PreToolUse` hook should hard-block reading/editing any real `.env` (use
-  `.env.example` instead) and block recursive directory deletes.
-- Flyway migrations must be reversible where the database supports it; if using
-  versioned-only migrations, never edit a migration that has already shipped — add a
-  new one.
+- Never commit secrets, `.env` files, or JWT signing keys. A `PreToolUse` hook
+  hard-blocks reading/editing any real `.env` (use `.env.example` instead) and blocks
+  recursive directory deletes.
+- Flyway migrations must be reversible where the database supports it; never edit a
+  migration that has already shipped — add a new one.
 - Escape user-supplied fields before writing them to any CSV cell (formula-injection
-  risk — see export pattern context above).
-- All new endpoints use Spring Security with JWT bearer auth. Do not introduce a
-  second, legacy auth mechanism the way the original brownfield app did — build this
-  one clean from the start.
-
----
-
-## Miscellaneous / Gotchas (to establish, not inherited)
-
-- Postgres runs on host port **5435** (not 5432). Connection string:
-  `jdbc:postgresql://localhost:5435/schedulr`. Configure this as the default in
-  `application.yml` under the `local` profile, falling back to `DATABASE_URL` env var
-  in other profiles.
-- `docker-compose.yml` should map `5435:5432` for the Postgres service.
-- `mvnw`/`mvnw.cmd` wrappers should be committed so `./mvnw <cmd>` works without a
-  local Maven install; frontend `node_modules` should NOT be committed.
-- Since this is a from-scratch build rather than a brownfield app, there should be no
-  deliberately-inconsistent columns or dual auth systems — treat this as an
-  opportunity to avoid the smells the original demo calls out, not replicate them.
-
----
-
-## What Claude Code should do with this file
-
-1. Scaffold `app/backend` as a Spring Boot 4 (Maven) project and `app/frontend` as a
-   Vite + React + TypeScript project, matching the directory layout implied above.
-2. Set up `app/docker-compose.yml` for Postgres on port 5435.
-3. Build the resource set to match Schedulr: meetings, contacts, CSV export, JWT auth,
-   timezone-aware scheduling — one resource at a time, each following the patterns
-   above.
-4. Create the `.claude/context/*.md` modules as each area is built, so future sessions
-   load only what's relevant.
-5. Wire up hooks (`PreToolUse` for the `.env`/delete guard, `Stop` for the validation
-   gate) once the build commands above actually exist and pass.
+  risk).
+- All endpoints use Spring Security with JWT bearer auth. No second, legacy auth
+  mechanism.
+- Postgres runs on host port **5435** (container 5432):
+  `jdbc:postgresql://localhost:5435/schedulr`, the `local` profile default in
+  `application.yml`, falling back to `DATABASE_URL` elsewhere.
+- `mvnw`/`mvnw.cmd` are committed so `./mvnw <cmd>` works without a local Maven
+  install; frontend `node_modules/` is not committed.
